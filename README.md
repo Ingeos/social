@@ -14,6 +14,7 @@ Available addons
 addon | version | summary
 --- | --- | ---
 [base_search_mail_content](base_search_mail_content/) | 10.0.1.0.0 | Base Search Mail Content
+[bus_presence_override](bus_presence_override/) | 10.0.1.0.0 | Adds user-defined im status (online, away, offline).
 [email_template_qweb](email_template_qweb/) | 10.0.1.0.0 | Use the QWeb templating mechanism for emails
 [mail_as_letter](mail_as_letter/) | 10.0.1.0.0 | This module allows to download a mail message as a pdf letter.
 [mail_attach_existing_attachment](mail_attach_existing_attachment/) | 10.0.1.0.0 | Adding attachment on the object by sending this one
@@ -32,7 +33,7 @@ addon | version | summary
 [mail_sendgrid](mail_sendgrid/) | 10.0.1.0.2 | SendGrid
 [mail_sendgrid_mass_mailing](mail_sendgrid_mass_mailing/) | 10.0.1.0.1 | Mass Mailing with SendGrid
 [mail_tracking](mail_tracking/) | 10.0.1.1.1 | Email tracking system for all mails sent
-[mail_tracking_mailgun](mail_tracking_mailgun/) | 10.0.1.1.3 | Mail tracking and Mailgun webhooks integration
+[mail_tracking_mailgun](mail_tracking_mailgun/) | 10.0.1.2.1 | Mail tracking and Mailgun webhooks integration
 [mail_tracking_mass_mailing](mail_tracking_mass_mailing/) | 10.0.1.0.1 | Improve mass mailing email tracking
 [mass_mailing_custom_unsubscribe](mass_mailing_custom_unsubscribe/) | 10.0.2.0.0 | Know and track (un)subscription reasons, GDPR compliant
 [mass_mailing_event](mass_mailing_event/) | 10.0.1.0.1 | Link mass mailing with event for excluding recipients
