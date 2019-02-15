@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
-# © 2016 Antonio Espinosa - <antonio.espinosa@tecnativa.com>
+# Copyright 2016 Antonio Espinosa - <antonio.espinosa@tecnativa.com>
+# Copyright 2017 Vicent Cubells - <vicent.cubells@tecnativa.com>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
 import logging
 try:
-    from openerp.addons.mail_tracking.hooks import column_add_with_value
+    from odoo.addons.mail_tracking.hooks import column_add_with_value
 except ImportError:
     column_add_with_value = False
 

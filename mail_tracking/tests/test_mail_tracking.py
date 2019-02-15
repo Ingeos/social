@@ -1,16 +1,15 @@
-# -*- coding: utf-8 -*-
-# © 2016 Antonio Espinosa - <antonio.espinosa@tecnativa.com>
+# Copyright 2016 Antonio Espinosa - <antonio.espinosa@tecnativa.com>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
 import mock
-import base64
+from odoo.tools import mute_logger
 import time
-from openerp import http
-from openerp.tests.common import TransactionCase
+from odoo import http
+from odoo.tests.common import TransactionCase
 from ..controllers.main import MailTrackingController, BLANK
 
-mock_send_email = ('openerp.addons.base.ir.ir_mail_server.'
-                   'ir_mail_server.send_email')
+mock_send_email = ('odoo.addons.base.ir.ir_mail_server.'
+                   'IrMailServer.send_email')
 
 
 class FakeUserAgent(object):
@@ -28,12 +27,10 @@ class TestMailTracking(TransactionCase):
         self.sender = self.env['res.partner'].create({
             'name': 'Test sender',
             'email': 'sender@example.com',
-            'notify_email': 'always',
         })
         self.recipient = self.env['res.partner'].create({
             'name': 'Test recipient',
             'email': 'recipient@example.com',
-            'notify_email': 'always',
         })
         self.last_request = http.request
         http.request = type('obj', (object,), {
@@ -52,10 +49,6 @@ class TestMailTracking(TransactionCase):
         http.request = self.last_request
         return super(TestMailTracking, self).tearDown(*args, **kwargs)
 
-    def test_email_lower(self):
-        self.recipient.write({'email': 'UPPER@example.com'})
-        self.assertEqual('upper@example.com', self.recipient.email)
-
     def test_empty_email(self):
         self.recipient.write({'email_bounced': True})
         self.recipient.write({'email': False})
@@ -63,7 +56,6 @@ class TestMailTracking(TransactionCase):
         self.assertEqual(False, self.recipient.email_bounced)
         self.recipient.write({'email_bounced': True})
         self.recipient.write({'email': ''})
-        self.assertEqual(False, self.recipient.email)
         self.assertEqual(False, self.recipient.email_bounced)
         self.assertEqual(
             False,
@@ -83,7 +75,7 @@ class TestMailTracking(TransactionCase):
             'subject': 'Message test',
             'author_id': self.sender.id,
             'email_from': self.sender.email,
-            'type': 'comment',
+            'message_type': 'comment',
             'model': 'res.partner',
             'res_id': self.recipient.id,
             'partner_ids': [(4, self.recipient.id)],
@@ -98,19 +90,18 @@ class TestMailTracking(TransactionCase):
         self.assertTrue(tracking_email)
         self.assertEqual(tracking_email.state, 'sent')
         # message_dict read by web interface
-        message_dict = self.env['mail.message'].message_read(message.id)
-        # First item is message content
-        self.assertTrue(len(message_dict) > 0)
-        message_dict = message_dict[0]
+        message_dict = message.message_format()[0]
         self.assertTrue(len(message_dict['partner_ids']) > 0)
         # First partner is recipient
         partner_id = message_dict['partner_ids'][0][0]
         self.assertEqual(partner_id, self.recipient.id)
-        status = message_dict['partner_trackings'][str(partner_id)]
+        status = message_dict['partner_trackings'][0]
         # Tracking status must be sent and
         # mail tracking must be the one search before
         self.assertEqual(status[0], 'sent')
         self.assertEqual(status[1], tracking_email.id)
+        self.assertEqual(status[2], self.recipient.display_name)
+        self.assertEqual(status[3], self.recipient.id)
         # And now open the email
         metadata = {
             'ip': '127.0.0.1',
@@ -138,7 +129,7 @@ class TestMailTracking(TransactionCase):
     def test_mail_send(self):
         controller = MailTrackingController()
         db = self.env.cr.dbname
-        image = base64.decodestring(BLANK)
+        image = BLANK
         mail, tracking = self.mail_send(self.recipient.email)
         self.assertEqual(mail.email_to, tracking.recipient)
         self.assertEqual(mail.email_from, tracking.sender)
@@ -223,6 +214,7 @@ class TestMailTracking(TransactionCase):
         )
         self.assertEqual(len(opens), 3)
 
+    @mute_logger('odoo.addons.mail.models.mail_mail')
     def test_smtp_error(self):
         with mock.patch(mock_send_email) as mock_func:
             mock_func.side_effect = Warning('Test error')
@@ -305,12 +297,30 @@ class TestMailTracking(TransactionCase):
             self.assertEqual('bounced', tracking.state)
         self.assertEqual(0.0, self.recipient.email_score)
 
+    def test_bounce_new_partner(self):
+        mail, tracking = self.mail_send(self.recipient.email)
+        tracking.event_create('hard_bounce', {})
+        new_partner = self.env['res.partner'].create({
+            'name': 'Test New Partner',
+        })
+        new_partner.email = self.recipient.email
+        self.assertTrue(new_partner.email_bounced)
+
+    def test_recordset_email_score(self):
+        """For backwords compatibility sake"""
+        trackings = self.env['mail.tracking.email']
+        for i in range(11):
+            mail, tracking = self.mail_send(self.recipient.email)
+            tracking.event_create('click', {})
+            trackings |= tracking
+        self.assertEqual(100.0, trackings.email_score())
+
     def test_db(self):
         db = self.env.cr.dbname
         controller = MailTrackingController()
         not_found = controller.mail_tracking_all('not_found_db')
-        self.assertEqual('NOT FOUND', not_found.response[0])
+        self.assertEqual(b'NOT FOUND', not_found.response[0])
         none = controller.mail_tracking_all(db)
-        self.assertEqual('NONE', none.response[0])
+        self.assertEqual(b'NONE', none.response[0])
         none = controller.mail_tracking_event(db, 'open')
-        self.assertEqual('NONE', none.response[0])
+        self.assertEqual(b'NONE', none.response[0])

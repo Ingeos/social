@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-# Python source code encoding : https://www.python.org/dev/peps/pep-0263/
-##############################################################################
-# For copyright and license notices, see __openerp__.py file in root directory
-##############################################################################
+# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
 from . import controllers, models
+from .hooks import post_init_hook

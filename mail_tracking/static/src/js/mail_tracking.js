@@ -1,62 +1,83 @@
-/* © 2016 Antonio Espinosa - <antonio.espinosa@tecnativa.com>
+/* Copyright 2016 Antonio Espinosa - <antonio.espinosa@tecnativa.com>
+   Copyright 2018 David Vidal - <david.vidal@tecnativa.com>
      License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html). */
 
-(function ($, window, document) {
-    'use strict';
+odoo.define('mail_tracking.partner_tracking', function(require){
+    "use strict";
 
-    openerp.mail_tracking = function (instance) {
-        var _t = instance.web._t,
-            _lt = instance.web._lt;
-        var QWeb = instance.web.qweb;
-        var mail_orig = instance.mail;
-        var mail_inherit = function() {
-            instance.mail.MessageCommon.include({
-                init: function (parent, datasets, options) {
-                    this._super(parent, datasets, options);
-                    this.partner_trackings = datasets.partner_trackings || [];
-                }
-            });
-            instance.mail.ThreadMessage.include({
-                bind_events: function () {
-                    this._super();
-                    this.$('.oe_mail_action_tracking').on('click', this.on_tracking_status_clicked);
-                },
-                on_tracking_status_clicked: function (event) {
-                    event.preventDefault();
-                    var tracking_email_id = $(event.delegateTarget).data('tracking');
-                    var state = {
-                        'model': 'mail.tracking.email',
-                        'id': tracking_email_id,
-                        'title': _t("Message tracking"),
-                    };
-                    instance.webclient.action_manager.do_push_state(state);
-                    var action = {
-                        type:'ir.actions.act_window',
-                        view_type: 'form',
-                        view_mode: 'form',
-                        res_model: 'mail.tracking.email',
-                        views: [[false, 'form']],
-                        target: 'new',
-                        res_id: tracking_email_id,
-                    };
-                    this.do_action(action);
-                }
-            });
-        };
+    var core = require('web.core');
+    var session = require('web.session');
+    var data = require('web.data');
+    var ActionManager = require('web.ActionManager');
+    var chat_manager = require('mail.chat_manager');
+    var ChatThread = require('mail.ChatThread');
+    var Chatter = require('mail.Chatter');
 
-        // Tricky way to guarantee that this module is loaded always
-        // after mail module.
-        // When --load=web,mail_tracking is specified in init script, then
-        // web and mail_tracking are the first modules to load in JS
-        if (instance.mail.MessageCommon === undefined) {
-            instance.mail = function(instance) {
-                instance.mail = mail_orig;
-                instance.mail(instance, instance.mail);
-                mail_inherit();
-            };
-        } else {
-            mail_inherit();
-        }
+    var _t = core._t;
+
+    // chat_manager is a simple dictionary, not an OdooClass
+    chat_manager._make_message_super = chat_manager.make_message;
+    chat_manager.make_message = function(data) {
+        var msg = this._make_message_super(data);
+        msg.partner_trackings = data.partner_trackings || [];
+        return msg;
     };
 
-}(window.jQuery, window, document));
+    ChatThread.include({
+        events: _.extend(ChatThread.prototype.events, {
+            'click .o_mail_action_tracking_partner': 'on_tracking_partner_click',
+            'click .o_mail_action_tracking_status': 'on_tracking_status_click',
+        }),
+        _preprocess_message: function (message) {
+            var msg = this._super.apply(this, arguments);
+            msg.partner_trackings = msg.partner_trackings || [];
+            return msg;
+        },
+        on_tracking_partner_click: function (event) {
+            var partner_id = this.$el.find(event.currentTarget).data('partner');
+            var state = {
+                'model': 'res.partner',
+                'id': partner_id,
+                'title': _t("Tracking partner"),
+            };
+            event.preventDefault();
+            this.action_manager.do_push_state(state);
+            var action = {
+                type:'ir.actions.act_window',
+                view_type: 'form',
+                view_mode: 'form',
+                res_model: 'res.partner',
+                views: [[false, 'form']],
+                target: 'current',
+                res_id: partner_id,
+            };
+            this.do_action(action);
+        },
+        on_tracking_status_click: function (event) {
+            var tracking_email_id = $(event.currentTarget).data('tracking');
+            var state = {
+                'model': 'mail.tracking.email',
+                'id': tracking_email_id,
+                'title': _t("Message tracking"),
+            };
+            event.preventDefault();
+            this.action_manager.do_push_state(state);
+            var action = {
+                type:'ir.actions.act_window',
+                view_type: 'form',
+                view_mode: 'form',
+                res_model: 'mail.tracking.email',
+                views: [[false, 'form']],
+                target: 'new',
+                res_id: tracking_email_id,
+            };
+            this.do_action(action);
+        },
+        init: function (parent, options) {
+            this._super.apply(this, arguments);
+            this.action_manager = this.findAncestor(function(ancestor){
+                return ancestor instanceof ActionManager;
+            });
+        },
+    });
+});

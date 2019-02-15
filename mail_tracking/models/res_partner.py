@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
-# © 2016 Antonio Espinosa - <antonio.espinosa@tecnativa.com>
+# Copyright 2016 Antonio Espinosa - <antonio.espinosa@tecnativa.com>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
-from openerp import models, api, fields
+from odoo import models, api, fields
 
 
 class ResPartner(models.Model):
@@ -17,7 +16,6 @@ class ResPartner(models.Model):
     email_bounced = fields.Boolean(index=True)
     email_score = fields.Float(compute='_compute_email_score', readonly=True)
 
-    @api.multi
     @api.depends('email')
     def _compute_email_score(self):
         for partner in self.filtered('email'):
@@ -41,12 +39,16 @@ class ResPartner(models.Model):
         partners = self.filtered(lambda r: not r.email_bounced)
         return partners.write({'email_bounced': True})
 
-    @api.multi
     def write(self, vals):
-        email = vals.get('email')
-        if email is not None:
-            vals['email'] = email.lower() if email else False
-            vals['email_bounced'] = (
-                bool(email) and
-                self.env['mail.tracking.email'].email_is_bounced(email))
+        if 'email' not in vals:
+            return super(ResPartner, self).write(vals)
+        email = vals['email'].lower() if vals['email'] else False
+        mte_obj = self.env['mail.tracking.email']
+        if not mte_obj.email_is_bounced(email):
+            vals['email_bounced'] = False
+            return super(ResPartner, self).write(vals)
+        res = mte_obj._email_last_tracking_state(email)
+        tracking = mte_obj.browse(res[0].get('id'))
+        event = tracking.tracking_event_ids[:1]
+        self.email_bounced_set(tracking, event.error_details, event)
         return super(ResPartner, self).write(vals)

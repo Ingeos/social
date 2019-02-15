@@ -1,14 +1,13 @@
-# -*- coding: utf-8 -*-
-# © 2016 Antonio Espinosa - <antonio.espinosa@tecnativa.com>
+# Copyright 2016 Antonio Espinosa - <antonio.espinosa@tecnativa.com>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
 import werkzeug
 from psycopg2 import OperationalError
-from openerp import api, http, registry, SUPERUSER_ID
+from odoo import api, http, registry, SUPERUSER_ID
 import logging
 _logger = logging.getLogger(__name__)
 
-BLANK = 'R0lGODlhAQABAIAAANvf7wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='
+BLANK = b'R0lGODlhAQABAIAAANvf7wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='
 
 
 def _env_get(db, callback, tracking_id, event_type, **kw):
@@ -22,7 +21,7 @@ def _env_get(db, callback, tracking_id, event_type, **kw):
                 reg = registry(db)
             except OperationalError:
                 _logger.warning("Selected BD '%s' not found", db)
-            except:  # pragma: no cover
+            except Exception:  # pragma: no cover
                 _logger.warning("Selected BD '%s' connection error", db)
             if reg:
                 _logger.info("New environment for database '%s'", db)
@@ -65,12 +64,12 @@ class MailTrackingController(http.Controller):
             http.request, kw, metadata, event_type=event_type)
 
     @http.route('/mail/tracking/all/<string:db>',
-                type='http', auth='none')
+                type='http', auth='none', csrf=False)
     def mail_tracking_all(self, db, **kw):
         return _env_get(db, self._tracking_event, None, None, **kw)
 
     @http.route('/mail/tracking/event/<string:db>/<string:event_type>',
-                type='http', auth='none')
+                type='http', auth='none', csrf=False)
     def mail_tracking_event(self, db, event_type, **kw):
         return _env_get(db, self._tracking_event, None, event_type, **kw)
 
@@ -83,5 +82,5 @@ class MailTrackingController(http.Controller):
         # Always return GIF blank image
         response = werkzeug.wrappers.Response()
         response.mimetype = 'image/gif'
-        response.data = BLANK.decode('base64')
+        response.data = BLANK
         return response

@@ -1,35 +1,40 @@
-# -*- coding: utf-8 -*-
-# © 2016 Jairo Llopis <jairo.llopis@tecnativa.com>
+# Copyright 2016 Jairo Llopis <jairo.llopis@tecnativa.com>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
-from hashlib import sha256
-from uuid import uuid4
-from openerp import api, models
+from odoo import models
 
 
 class MailMassMailing(models.Model):
     _inherit = "mail.mass_mailing"
 
-    @api.model
-    def _init_salt_create(self):
-        """Create a salt to secure the unsubscription URLs."""
-        icp = self.env["ir.config_parameter"]
-        key = "mass_mailing.salt"
-        salt = icp.get_param(key)
-        if salt is False:
-            salt = str(uuid4())
-            icp.set_param(key, salt, ["base.group_erp_manager"])
-
-    @api.model
-    def hash_create(self, mailing_id, res_id, email):
-        """Create a secure hash to know if the unsubscription is trusted.
-
-        :return None/str:
-            Secure hash, or ``None`` if the system parameter is empty.
-        """
-        salt = self.env["ir.config_parameter"].sudo().get_param(
-            "mass_mailing.salt")
-        if not salt:
-            return None
-        source = (self.env.cr.dbname, mailing_id, res_id, email, salt)
-        return sha256(",".join(map(unicode, source))).hexdigest()
+    def update_opt_out(self, email, res_ids, value):
+        """Save unsubscription reason when opting out from mailing."""
+        self.ensure_one()
+        model = self.env[self.mailing_model_real].with_context(
+            active_test=False)
+        action = "unsubscription" if value else "subscription"
+        records = self.env[model._name].browse(res_ids)
+        previous = self.env["mail.unsubscription"].search(limit=1, args=[
+            ("mass_mailing_id", "=", self.id),
+            ("email", "=", email),
+            ("action", "=", action),
+        ])
+        if 'opt_out' not in model._fields:
+            return super(MailMassMailing, self).update_opt_out(
+                email, res_ids, value)
+        for one in records:
+            # Store action only when something changed, or there was no
+            # previous subscription record
+            if one.opt_out != value or (action == "subscription" and
+                                        not previous):
+                # reason_id and details are expected from the context
+                self.env["mail.unsubscription"].create({
+                    "email": email,
+                    "mass_mailing_id": self.id,
+                    "unsubscriber_id": "%s,%d" % (one._name, one.id),
+                    "action": action,
+                })
+            if model._name == 'mail.mass_mailing.contact':
+                pass
+        return super(MailMassMailing, self).update_opt_out(
+            email, res_ids, value)

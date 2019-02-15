@@ -1,13 +1,12 @@
-# -*- coding: utf-8 -*-
-# © 2016 Antonio Espinosa - <antonio.espinosa@tecnativa.com>
+# Copyright 2016 Antonio Espinosa - <antonio.espinosa@tecnativa.com>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
 import re
 import time
 from datetime import datetime
 
-from openerp import models, api, fields
-import openerp.addons.decimal_precision as dp
+from odoo import models, api, fields
+import odoo.addons.decimal_precision as dp
 
 
 class MailTrackingEvent(models.Model):
@@ -28,7 +27,7 @@ class MailTrackingEvent(models.Model):
         string="Date", readonly=True, compute="_compute_date", store=True)
     tracking_email_id = fields.Many2one(
         string='Message', readonly=True, required=True, ondelete='cascade',
-        comodel_name='mail.tracking.email')
+        comodel_name='mail.tracking.email', index=True)
     event_type = fields.Selection(string='Event type', selection=[
         ('sent', 'Sent'),
         ('delivered', 'Delivered'),

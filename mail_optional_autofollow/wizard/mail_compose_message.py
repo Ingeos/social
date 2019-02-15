@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016 ACSONE SA/NV (<http://acsone.eu>)
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
-from openerp import models, fields, api
+from odoo import models, fields, api
 
 
 class MailComposeMessage(models.TransientModel):
@@ -22,8 +21,9 @@ class MailComposeMessage(models.TransientModel):
         followers on the related object""")
 
     @api.multi
-    def send_mail(self):
+    def send_mail(self, auto_commit=False):
         for wizard in self:
             super(MailComposeMessage, wizard.with_context(
-                mail_post_autofollow=wizard.autofollow_recipients)).send_mail()
-        return {'type': 'ir.actions.act_window_close'}
+                mail_post_autofollow=wizard.autofollow_recipients)).send_mail(
+                    auto_commit=auto_commit)
+        return True

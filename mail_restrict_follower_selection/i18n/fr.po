@@ -1,29 +1,35 @@
 # Translation of Odoo Server.
 # This file contains the translation of the following modules:
 # * mail_restrict_follower_selection
-# 
+#
 # Translators:
-# Christophe CHAUVET <christophe.chauvet@gmail.com>, 2016
+# Quentin THEURET <odoo@kerpeo.com>, 2017
 msgid ""
 msgstr ""
-"Project-Id-Version: social (8.0)\n"
+"Project-Id-Version: Odoo Server 10.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2016-06-30 01:07+0000\n"
-"PO-Revision-Date: 2016-06-17 14:23+0000\n"
-"Last-Translator: Christophe CHAUVET <christophe.chauvet@gmail.com>\n"
-"Language-Team: French (http://www.transifex.com/oca/OCA-social-8-0/language/fr/)\n"
+"POT-Creation-Date: 2017-07-22 09:45+0000\n"
+"PO-Revision-Date: 2018-06-18 09:40+0000\n"
+"Last-Translator: c2cdidier <didier.donze@camptocamp.com>\n"
+"Language-Team: French (https://www.transifex.com/oca/teams/23907/fr/)\n"
+"Language: fr\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
-"Language: fr\n"
-"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"Plural-Forms: nplurals=2; plural=n > 1;\n"
+"X-Generator: Weblate 3.0.1\n"
 
 #. module: mail_restrict_follower_selection
 #: model:ir.actions.act_window,name:mail_restrict_follower_selection.action_setup
 msgid "Configure the restriction on followers"
-msgstr "Configurer la restictions des abonnés"
+msgstr "Configurer les restrictions sur les abonnés"
+
+#. module: mail_restrict_follower_selection
+#: model:ir.model,name:mail_restrict_follower_selection.model_mail_followers
+msgid "Document Followers"
+msgstr "Suiveurs du document"
 
 #. module: mail_restrict_follower_selection
 #: model:ir.model,name:mail_restrict_follower_selection.model_mail_wizard_invite
 msgid "Invite wizard"
-msgstr "Assistant invité"
+msgstr "Assistant d'invitation"

@@ -1,9 +1,13 @@
 .. image:: https://img.shields.io/badge/licence-AGPL--3-blue.svg
-    :alt: License: AGPL-3
+   :alt: License: AGPL-3
+
+===========================
 Restrict follower selection
 ===========================
 
 This module was written to allow you to restrict the selection of possible followers. For example, if you use the social ERP functions only internally, it makes sense to filter possible followers for being employees. Otherwise, you'll get a quite crowded list of partners to choose from.
+
+Moreover, the module disables the option to automatically add followers that do not meet the domain.
 
 Configuration
 =============
@@ -19,7 +23,7 @@ Usage
 
 .. image:: https://odoo-community.org/website/image/ir.attachment/5784_f2813bd/datas
    :alt: Try me on Runbot
-   :target: https://runbot.odoo-community.org/runbot/205/8.0
+   :target: https://runbot.odoo-community.org/runbot/205/11.0
 
 For further information, please visit:
 
@@ -40,6 +44,8 @@ Contributors
 ------------
 
 * Holger Brunn <hbrunn@therp.nl>
+* Nguyen Tan Phuc <phuc.nt@komit-consulting.com>
+* Enric Tobella <etobella@creublanca.es>
 
 Maintainer
 ----------

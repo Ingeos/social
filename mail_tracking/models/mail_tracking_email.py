@@ -1,15 +1,14 @@
-# -*- coding: utf-8 -*-
-# © 2016 Antonio Espinosa - <antonio.espinosa@tecnativa.com>
+# Copyright 2016 Antonio Espinosa - <antonio.espinosa@tecnativa.com>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
 import logging
-import urlparse
+import urllib.parse
 import time
 import re
 from datetime import datetime
 
-from openerp import models, api, fields, tools
-import openerp.addons.decimal_precision as dp
+from odoo import models, api, fields, tools
+import odoo.addons.decimal_precision as dp
 
 _logger = logging.getLogger(__name__)
 
@@ -31,7 +30,7 @@ class MailTrackingEmail(models.Model):
     name = fields.Char(string="Subject", readonly=True, index=True)
     display_name = fields.Char(
         string="Display name", readonly=True, store=True,
-        compute="_compute_display_name")
+        compute="_compute_tracking_display_name")
     timestamp = fields.Float(
         string='UTC timestamp', readonly=True,
         digits=dp.get_precision('MailTracking Timestamp'))
@@ -39,7 +38,8 @@ class MailTrackingEmail(models.Model):
     date = fields.Date(
         string="Date", readonly=True, compute="_compute_date", store=True)
     mail_message_id = fields.Many2one(
-        string="Message", comodel_name='mail.message', readonly=True)
+        string="Message", comodel_name='mail.message', readonly=True,
+        index=True)
     mail_id = fields.Many2one(
         string="Email", comodel_name='mail.mail', readonly=True)
     partner_id = fields.Many2one(
@@ -93,27 +93,26 @@ class MailTrackingEmail(models.Model):
         inverse_name='tracking_email_id', readonly=True)
 
     @api.model
-    def _email_score_tracking_filter(self, domain, order='time desc',
-                                     limit=10):
-        """Default tracking search. Ready to be inherited."""
-        return self.search(domain, limit=limit, order=order)
+    def email_is_bounced(self, email):
+        if not email:
+            return False
+        res = self._email_last_tracking_state(email)
+        return res and res[0].get('state', '') in ['rejected', 'error',
+                                                   'spam', 'bounced']
 
     @api.model
-    def email_is_bounced(self, email):
-        if email:
-            return len(self._email_score_tracking_filter([
-                ('recipient_address', '=', email.lower()),
-                ('state', 'in', ('error', 'rejected', 'spam', 'bounced')),
-            ])) > 0
-        return False
+    def _email_last_tracking_state(self, email):
+        return self.search_read([('recipient_address', '=', email.lower())],
+                                ['state'], limit=1, order='time DESC')
 
     @api.model
     def email_score_from_email(self, email):
-        if email:
-            return self._email_score_tracking_filter([
-                ('recipient_address', '=', email.lower())
-            ]).email_score()
-        return 0.
+        if not email:
+            return 0.
+        data = self.read_group([('recipient_address', '=', email.lower())],
+                               ['recipient_address', 'state'], ['state'])
+        mapped_data = {state['state']: state['state_count'] for state in data}
+        return self.with_context(mt_states=mapped_data).email_score()
 
     @api.model
     def _email_score_weights(self):
@@ -129,10 +128,9 @@ class MailTrackingEmail(models.Model):
             'opened': 5.0,
         }
 
-    @api.multi
     def email_score(self):
         """Default email score algorimth. Ready to be inherited
-
+        It can receive a recordset or mapped states dictionary via context.
         Must return a value beetwen 0.0 and 100.0
         - Bad reputation: Value between 0 and 50.0
         - Unknown reputation: Value 50.0
@@ -140,15 +138,19 @@ class MailTrackingEmail(models.Model):
         """
         weights = self._email_score_weights()
         score = 50.0
-        for tracking in self:
-            score += weights.get(tracking.state, 0.0)
+        states = self.env.context.get('mt_states', False)
+        if states:
+            for state in states.keys():
+                score += weights.get(state, 0.0) * states[state]
+        else:
+            for tracking in self:
+                score += weights.get(tracking.state, 0.0)
         if score > 100.0:
             score = 100.0
         elif score < 0.0:
             score = 0.0
         return score
 
-    @api.multi
     @api.depends('recipient')
     def _compute_recipient_address(self):
         for email in self:
@@ -161,16 +163,14 @@ class MailTrackingEmail(models.Model):
             else:
                 email.recipient_address = False
 
-    @api.multi
     @api.depends('name', 'recipient')
-    def _compute_display_name(self):
+    def _compute_tracking_display_name(self):
         for email in self:
             parts = [email.name or '']
             if email.recipient:
                 parts.append(email.recipient)
             email.display_name = ' - '.join(parts)
 
-    @api.multi
     @api.depends('time')
     def _compute_date(self):
         for email in self:
@@ -186,7 +186,7 @@ class MailTrackingEmail(models.Model):
                 'db': self.env.cr.dbname,
                 'tracking_email_id': self.id,
             })
-        track_url = urlparse.urljoin(base_url, path_url)
+        track_url = urllib.parse.urljoin(base_url, path_url)
         return (
             '<img src="%(url)s" alt="" '
             'data-odoo-tracking-email="%(tracking_email_id)s"/>' % {
@@ -200,7 +200,7 @@ class MailTrackingEmail(models.Model):
         if event and event.recipient_address:
             recipients.append(event.recipient_address)
         else:
-            recipients = list(filter(None, self.mapped('recipient_address')))
+            recipients = [x for x in self.mapped('recipient_address') if x]
         for recipient in recipients:
             self.env['res.partner'].search([
                 ('email', '=ilike', recipient)
@@ -222,21 +222,28 @@ class MailTrackingEmail(models.Model):
         self.ensure_one()
         tracking_url = self._get_mail_tracking_img()
         if tracking_url:
+            content = email.get('body', '')
+            content = re.sub(
+                r'<img[^>]*data-odoo-tracking-email=["\'][0-9]*["\'][^>]*>',
+                '', content)
             body = tools.append_content_to_html(
-                email.get('body', ''), tracking_url, plaintext=False,
+                content, tracking_url, plaintext=False,
                 container_tag='div')
             email['body'] = body
         return email
 
     def _message_partners_check(self, message, message_id):
+        if not self.mail_message_id.exists():  # pragma: no cover
+            return True
         mail_message = self.mail_message_id
-        partners = mail_message.notified_partner_ids | mail_message.partner_ids
+        partners = (
+            mail_message.needaction_partner_ids | mail_message.partner_ids)
         if (self.partner_id and self.partner_id not in partners):
             # If mail_message haven't tracking partner, then
             # add it in order to see his tracking status in chatter
             if mail_message.subtype_id:
                 mail_message.sudo().write({
-                    'notified_partner_ids': [(4, self.partner_id.id)],
+                    'needaction_partner_ids': [(4, self.partner_id.id)],
                 })
             else:
                 mail_message.sudo().write({

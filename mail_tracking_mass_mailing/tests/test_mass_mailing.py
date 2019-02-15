@@ -1,61 +1,48 @@
-# -*- coding: utf-8 -*-
-# © 2016 Antonio Espinosa - <antonio.espinosa@tecnativa.com>
+# Copyright 2016 Antonio Espinosa - <antonio.espinosa@tecnativa.com>
+# Copyright 2017 Vicent Cubells - <vicent.cubells@tecnativa.com>
+# Copyright 2017 David Vidal - <david.vidal@tecnativa.com>
+# Copyright 2018 Tecnativa - Pedro M. Baeza
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
 import mock
-from openerp.tests.common import TransactionCase
-from openerp.exceptions import Warning as UserError
+from odoo.tools import mute_logger
+from odoo.tests.common import at_install, post_install, TransactionCase
 
-mock_send_email = ('openerp.addons.base.ir.ir_mail_server.'
-                   'ir_mail_server.send_email')
+mock_send_email = ('odoo.addons.base.ir.ir_mail_server.'
+                   'IrMailServer.send_email')
 
 
+@at_install(False)
+@post_install(True)
 class TestMassMailing(TransactionCase):
     def setUp(self, *args, **kwargs):
         super(TestMassMailing, self).setUp(*args, **kwargs)
         self.list = self.env['mail.mass_mailing.list'].create({
             'name': 'Test mail tracking',
         })
+        self.list.name = '%s #%s' % (self.list.name, self.list.id)
         self.contact_a = self.env['mail.mass_mailing.contact'].create({
-            'list_id': self.list.id,
+            'list_ids': [(6, 0, self.list.ids)],
             'name': 'Test contact A',
             'email': 'contact_a@example.com',
         })
         self.mailing = self.env['mail.mass_mailing'].create({
             'name': 'Test subject',
             'email_from': 'from@example.com',
-            'mailing_model': 'mail.mass_mailing.contact',
-            'mailing_domain': "[('list_id', 'in', [%d]), "
+            'mailing_model_id': self.env.ref(
+                'mass_mailing.model_mail_mass_mailing_contact'
+            ).id,
+            'mailing_domain': "[('list_ids', '=', %d), "
                               "('opt_out', '=', False)]" % self.list.id,
             'contact_list_ids': [(6, False, [self.list.id])],
             'body_html': '<p>Test email body</p>',
             'reply_to_mode': 'email',
         })
 
-    def resend_mass_mailing(self, first, second):
-        self.mailing.send_mail()
-        self.assertEqual(len(self.mailing.statistics_ids), first)
-        self.env['mail.mass_mailing.contact'].create({
-            'list_id': self.list.id,
-            'name': 'Test contact B',
-            'email': 'contact_b@example.com',
-        })
-        self.mailing.send_mail()
-        self.assertEqual(len(self.mailing.statistics_ids), second)
-
-    def test_avoid_resend_enable(self):
-        self.mailing.avoid_resend = True
-        self.resend_mass_mailing(1, 2)
-        with self.assertRaises(UserError):
-            self.mailing.send_mail()
-
-    def test_avoid_resend_disable(self):
-        self.mailing.avoid_resend = False
-        self.resend_mass_mailing(1, 3)
-
+    @mute_logger('odoo.addons.mail.models.mail_mail')
     def test_smtp_error(self):
         with mock.patch(mock_send_email) as mock_func:
-            mock_func.side_effect = Warning('Test error')
+            mock_func.side_effect = Warning('Mock test error')
             self.mailing.send_mail()
             for stat in self.mailing.statistics_ids:
                 if stat.mail_mail_id:
@@ -63,9 +50,11 @@ class TestMassMailing(TransactionCase):
                 tracking = self.env['mail.tracking.email'].search([
                     ('mail_id_int', '=', stat.mail_mail_id_int),
                 ])
-                self.assertEqual('error', tracking.state)
-                self.assertEqual('Warning', tracking.error_type)
-                self.assertEqual('Test error', tracking.error_description)
+                for track in tracking:
+                    self.assertEqual('error', track.state)
+                    self.assertEqual('Warning', track.error_type)
+                    self.assertEqual('Mock test error',
+                                     track.error_description)
             self.assertTrue(self.contact_a.email_bounced)
 
     def test_tracking_email_link(self):
