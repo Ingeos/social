@@ -17,7 +17,8 @@ addon | version | summary
 [email_template_qweb](email_template_qweb/) | 8.0.1.0.0 | Use the QWeb templating mechanism for emails
 [mail_attach_existing_attachment](mail_attach_existing_attachment/) | 8.0.1.0.0 | Adding attachment on the object by sending this one
 [mail_compose_select_lang](mail_compose_select_lang/) | 8.0.1.0.0 | Select language in mail compose window
-[mail_debrand](mail_debrand/) | 8.0.1.0.0 | Remove Odoo branding from email footers
+[mail_debrand](mail_debrand/) | 8.0.1.0.2 | Remove Odoo branding from email footers
+[mail_edit](mail_edit/) | 8.0.1.0.0 | Adds an option to edit mail to different partners
 [mail_follower_custom_notification](mail_follower_custom_notification/) | 8.0.1.0.0 | Let followers choose if they want to receive email notifications for a given subscription
 [mail_footer_notified_partners](mail_footer_notified_partners/) | 8.0.1.0.0 | This module adds the list of notified partners in the footer of notification e-mails sent by Odoo.
 [mail_forward](mail_forward/) | 8.0.7.0.0 | Add option to forward messages
@@ -43,6 +44,8 @@ addon | version | summary
 [mass_mailing_unique](mass_mailing_unique/) | 8.0.1.0.0 | Avoids duplicate mailing lists and contacts
 [portal_welcome_email_template](portal_welcome_email_template/) | 8.0.1.0.0 | Adds an customizable email template for portal user invitation
 [social_media_dribbble](social_media_dribbble/) | 8.0.1.0.0 | Dribbble Extension for the social media icons from the odoo core
+[social_media_pinterest](social_media_pinterest/) | 8.0.1.0.0 | Pinterest Extension for the social media icons from the odoo core
+[social_media_pinterest_blog](social_media_pinterest_blog/) | 8.0.1.0.0 | Pinterest Extension for the social media icons from the odoo core
 [social_media_tripadvisor](social_media_tripadvisor/) | 8.0.1.0.0 | Tripadvisor Extension for the social media icons from the odoo core
 [social_media_xing](social_media_xing/) | 8.0.1.0.0 | Xing Extension for the social media icons from the odoo core
 [website_mail_snippet_bg_color](website_mail_snippet_bg_color/) | 8.0.1.0.0 | Set any background color for any mail editor snippet
